@@ -16,7 +16,15 @@
  */
 package edu.sfsu.cs.orange.ocr;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.IntBuffer;
+
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.util.Log;
 
 /**
  * This object extends LuminanceSource around an array of YUV data returned from the camera driver,
@@ -142,6 +150,37 @@ public final class PlanarYUVLuminanceSource extends LuminanceSource {
     bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
     return bitmap;
   }
+  
+  
+  public Bitmap renderBitmap() {
+	  int width = getWidth();
+	    int height = getHeight();
+	    int[] pixels = new int[width * height];
+	    byte[] yuv = yuvData;
+	    int inputOffset = top * dataWidth + left;
+
+	    for (int y = 0; y < height; y++) {
+	      int outputOffset = y * width;
+	      for (int x = 0; x < width; x++) {
+	        int grey = yuv[inputOffset + x] & 0xff;
+	        pixels[outputOffset + x] = 0xFF000000 | (grey * 0x00010101);
+	      }
+	      inputOffset += dataWidth;
+	    }
+
+	    Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+	    bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
+	    return bitmap;
+	  }
+
+	private IntBuffer makeBuffer(int[] src, int n) {
+		IntBuffer dst = IntBuffer.allocate(n * n);
+		for (int i = 0; i < n; i++) {
+			dst.put(src);
+		}
+		dst.rewind();
+		return dst;
+	}
 
   private void reverseHorizontal(int width, int height) {
     byte[] yuvData = this.yuvData;
@@ -154,5 +193,4 @@ public final class PlanarYUVLuminanceSource extends LuminanceSource {
       }
     }
   }
-
 }

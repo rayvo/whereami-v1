@@ -19,9 +19,8 @@ import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import com.googlecode.leptonica.android.ReadFile;
-import com.googlecode.tesseract.android.TessBaseAPI;
-
+import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.os.AsyncTask;
@@ -29,6 +28,8 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+
+import com.googlecode.tesseract.android.TessBaseAPI;
 
 /**
  * Class to send OCR requests to the OCR engine in a separate thread, send a success/failure message,
@@ -45,7 +46,8 @@ final class OcrRecognizeAsyncTask extends AsyncTask<Void, Void, Boolean> {
   private byte[] data;
   private int width;
   private int height;
-  private OcrResult ocrResult;
+ // private OcrResult ocrResult;
+  
   private long timeRequired;
 
   OcrRecognizeAsyncTask(CaptureActivity activity, TessBaseAPI baseApi, byte[] data, int width, int height) {
@@ -56,33 +58,52 @@ final class OcrRecognizeAsyncTask extends AsyncTask<Void, Void, Boolean> {
     this.height = height;
   }
 
+  @SuppressLint("SimpleDateFormat")
+	protected void extractFragments() {
+		Bitmap bitmap = activity.getCameraManager()
+				.buildLuminanceSource(data, width, height)
+				.renderBitmap();
+
+		Log.d("RayVo AsyncTask", "data:" + data + "\n width: " + width
+				+ "\nheight: " + height);
+
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+		String currentDateandTime = sdf.format(new Date());
+		String fileName = Environment.getExternalStorageDirectory().getPath()
+				+ "/wai_" + currentDateandTime + ".jpg";
+		try {
+			FileOutputStream fos = new FileOutputStream(fileName);
+			bitmap.compress(CompressFormat.PNG, 100, fos);
+
+		} catch (java.io.IOException e) {
+			Log.e("PictureDemo", "Exception in photoCallback", e);
+		}
+		//ocrResult = new OcrResult();
+		//ocrResult.setText(fileName);
+		//ocrResult.setBitmap(bitmap);
+		
+		Intent intent = new Intent(activity.getApplicationContext(),
+				ImageProcessingActivity.class);
+		intent.putExtra("FILE_NAME", fileName);
+		activity.startActivityForResult(intent, 1);
+
+		beProcessing = true;
+		
+	}
+  
+
+	// TODO Auto-generated method stub
+
+  private static boolean beProcessing = false;
+  
   @Override
   protected Boolean doInBackground(Void... arg0) {
-    long start = System.currentTimeMillis();
-    Bitmap bitmap = activity.getCameraManager().buildLuminanceSource(data, width, height).renderCroppedGreyscaleBitmap();
-    
-    Log.d("RayVo AsyncTask", "data:" + data + "\n width: " + width + "\nheight: " + height);
-
-    
-    
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
-    String currentDateandTime = sdf.format(new Date());
-    String fileName = Environment.getExternalStorageDirectory().getPath() +
-                           "/wai_" + currentDateandTime + ".jpg";
-    
-    
-    try {
-        FileOutputStream fos = new FileOutputStream(fileName);
-        bitmap.compress(CompressFormat.PNG, 100, fos);
-        
-
-    } catch (java.io.IOException e) {
-        Log.e("PictureDemo", "Exception in photoCallback", e);
-    }
-    ocrResult = new OcrResult();
-    ocrResult.setText(fileName);
-    ocrResult.setBitmap(bitmap);
-    return true;
+	  if (!beProcessing) {
+		  extractFragments();
+	  } else {
+		  System.out.print("Hello");
+	  }
+	  return true;
     
     /*
     String textResult;
@@ -146,10 +167,10 @@ final class OcrRecognizeAsyncTask extends AsyncTask<Void, Void, Boolean> {
     if (handler != null) {
       // Send results for single-shot mode recognition.
       if (result) {
-        Message message = Message.obtain(handler, R.id.ocr_decode_succeeded, ocrResult);
+        Message message = Message.obtain(handler, R.id.ocr_decode_succeeded, true);
         message.sendToTarget();
       } else {
-        Message message = Message.obtain(handler, R.id.ocr_decode_failed, ocrResult);
+        Message message = Message.obtain(handler, R.id.ocr_decode_failed, false);
         message.sendToTarget();
       }
       activity.getProgressDialog().dismiss();

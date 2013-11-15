@@ -44,7 +44,7 @@ public class LanguageCodeHelper {
 	 *            ISO 639-3 language code
 	 * @return ISO 639-1 language code
 	 */
-	public static String mapLanguageCode(String languageCode) {	  
+	public static String mapLanguageCode1(String languageCode) {	  
 	  if (languageCode.equals("ara")) { // Arabic
 	    return "ar";
 	  } else if (languageCode.equals("bul")) { // Bulgarian

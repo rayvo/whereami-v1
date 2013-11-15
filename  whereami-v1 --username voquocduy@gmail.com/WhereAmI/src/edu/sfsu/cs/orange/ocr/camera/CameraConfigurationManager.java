@@ -147,7 +147,7 @@ final class CameraConfigurationManager {
                                     Camera.Parameters.FLASH_MODE_ON);
     } else {
       flashMode = findSettableValue(parameters.getSupportedFlashModes(),
-                                    Camera.Parameters.FLASH_MODE_OFF);
+                                    Camera.Parameters.FLASH_MODE_ON); //TODO RAYVO
     }
     if (flashMode != null) {
       parameters.setFlashMode(flashMode);
