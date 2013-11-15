@@ -173,7 +173,7 @@ void flood_crop(int x,int y)
 	Vec3b intensity = src.at<Vec3b>(x, y);
 
 
-	if(intensity.val[0] == 255 && intensity.val[1]==0 && intensity.val[2]==0)
+	if(intensity.val[0] == 254 && intensity.val[1]==0 && intensity.val[2]==0)
 	{
 		intensity.val[0] = 255;
 		intensity.val[1] = 255;
@@ -261,13 +261,13 @@ extern "C" jboolean Java_edu_sfsu_cs_orange_ocr_ImageProcessingActivity_extractF
 
 	// Load source image and convert it to gray
 	LOGI("Load images!");
-	src = imread(fileName);
-	srcHL = imread(fileNameHL);
+	srcHL = imread(fileName);
+	src = imread(fileNameHL);
 
 	int i;
 	jsize len = (*env).GetArrayLength(xPoints);
-	jint *x = (*env).GetIntArrayElements(xPoints, 0);
-	jint *y = (*env).GetIntArrayElements(yPoints, 0);
+	jint *y = (*env).GetIntArrayElements(xPoints, 0);
+	jint *x = (*env).GetIntArrayElements(yPoints, 0);
 
 	LOGI("Len = %i", len);
 
@@ -315,7 +315,7 @@ extern "C" jboolean Java_edu_sfsu_cs_orange_ocr_ImageProcessingActivity_extractF
 		//namedWindow( "Display window", CV_WINDOW_AUTOSIZE );// Create a window for display.
 		//imshow( "Display window", temp );
 
-		string nm = "crop";
+		string nm = "_crop";
 		string str;
 		ostringstream tmp;
 		tmp << cnt;
@@ -325,7 +325,7 @@ extern "C" jboolean Java_edu_sfsu_cs_orange_ocr_ImageProcessingActivity_extractF
 		//string loc = "/home/darius/WhereAmI_Code/hghImg/crops/";
 
 		string loc = folder;
-		loc = "/mnt/sdcard/";
+		//loc = "/mnt/sdcard/";
 		loc += nm;
 		loc += ".jpg";
 		//LOGI(loc);
