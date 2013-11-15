@@ -1,5 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 
+STL_LIBS := -L/home/vqd/ndk/sources/cxx-stl/gnu-libstdc++/4.6/libs/armeabi/include
+                    
 include $(CLEAR_VARS)
 
 OPENCV_LIB_TYPE:=STATIC
@@ -14,8 +16,13 @@ else
 endif
 
 LOCAL_MODULE    := ImageProcessing
-LOCAL_SRC_FILES := ImageProcessing.cpp
-#LOCAL_LDLIBS +=  -llog -ldl
+LOCAL_SRC_FILES := ImageProcessing.cpp FeaturesMain.cpp TextDetection.cpp TextDetection.h
+
+LOCAL_CFLAGS += -I$(LOCAL_PATH)/boost/include/boost-1_53
+
 LOCAL_LDLIBS +=  -llog -ldl -ljnigraphics
+
+LOCAL_CPPFLAGS += -fexceptions
+LOCAL_CPPFLAGS += -frtti
 
 include $(BUILD_SHARED_LIBRARY)
