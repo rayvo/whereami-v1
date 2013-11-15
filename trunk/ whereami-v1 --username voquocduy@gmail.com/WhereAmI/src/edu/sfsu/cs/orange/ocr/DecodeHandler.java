@@ -110,13 +110,13 @@ final class DecodeHandler extends Handler {
     }
     bitmap = source.renderCroppedGreyscaleBitmap();
 
-    OcrResult ocrResult = getOcrResult();
+    //OcrResult ocrResult = getOcrResult();
     Handler handler = activity.getHandler();
     if (handler == null) {
       return;
     }
 
-    if (ocrResult == null) {
+/*    if (ocrResult == null) {
       try {
         sendContinuousOcrFailMessage();
       } catch (NullPointerException e) {
@@ -127,9 +127,9 @@ final class DecodeHandler extends Handler {
       }
       return;
     }
-
+*/
     try {
-      Message message = Message.obtain(handler, R.id.ocr_continuous_decode_succeeded, ocrResult);
+      Message message = Message.obtain(handler, R.id.ocr_continuous_decode_succeeded, true);
       message.sendToTarget();
     } catch (NullPointerException e) {
       activity.stopHandler();
@@ -139,7 +139,7 @@ final class DecodeHandler extends Handler {
   }
 
   @SuppressWarnings("unused")
-	private OcrResult getOcrResult() {
+	/*private OcrResult getOcrResult() {
     OcrResult ocrResult;
     String textResult;
     long start = System.currentTimeMillis();
@@ -190,7 +190,7 @@ final class DecodeHandler extends Handler {
     ocrResult.setText(textResult);
     ocrResult.setRecognitionTimeRequired(timeRequired);
     return ocrResult;
-  }
+  }*/
   
   private void sendContinuousOcrFailMessage() {
     Handler handler = activity.getHandler();

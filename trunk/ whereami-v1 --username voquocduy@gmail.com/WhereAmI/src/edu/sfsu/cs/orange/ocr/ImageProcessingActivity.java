@@ -2,6 +2,8 @@ package edu.sfsu.cs.orange.ocr;
 
 import java.util.List;
 
+import com.googlecode.leptonica.android.ReadFile;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -9,7 +11,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 
@@ -64,7 +65,7 @@ public class ImageProcessingActivity extends Activity{
 	public void doOCR(View view) {
         // call to the native method
 		curBitmap = ((BitmapDrawable) imgView.getDrawable()).getBitmap();
-		String folder = "/mnt/sdcard/";
+		String folder = fileNameOrg.substring(0,fileNameOrg.indexOf(".jpg"));
 			
 		List<Point> points = imgView.getPoints();
 		int size = points.size();
@@ -77,16 +78,28 @@ public class ImageProcessingActivity extends Activity{
 			i++;
 		}		
 		boolean result = extractFrags(curBitmap, folder, fileNameOrg, fileNameHL, xPoints, yPoints);
-		
-		Intent returnIntent = new Intent();
-		returnIntent.putExtra("NUM_FRAG", 2);
-		setResult(RESULT_OK,returnIntent);     
-		finish();
+		if (result) {
+			String fragName = folder + "_crop";
+			for (i = 1; i <= size; i++) {
+
+				cleanImage(fragName + i + ".jpg", fragName + i + "_out_m0.jpg",
+						"0");
+				cleanImage(fragName + i + ".jpg", fragName + i + "_out_m1.jpg",
+						"1");
+			}
+			Intent returnIntent = new Intent();
+			returnIntent.putExtra("NUM_FRAG", size);
+			returnIntent.putExtra("FRAG_NAME", fragName);
+
+			setResult(RESULT_OK, returnIntent);
+			finish();
+		}
     }
 	
 	//
 	// Native JNI 
 	//
+	private native boolean cleanImage(String input, String output, String mode);
 	private native boolean getFragments(Bitmap bitmap, int x, int y, byte[] imgData, int[] outPixels);
 	public native boolean extractFrags(Bitmap bmp, String folder, String fileName, String fileNameHL, int[] xPoints, int[] yPoints);
 	
@@ -119,7 +132,9 @@ public class ImageProcessingActivity extends Activity{
 			
 			bProcessing = false;
         }*/
-    };   
+    };  
+    
+ 
 	
 	
 }

@@ -17,22 +17,16 @@
 
 package edu.sfsu.cs.orange.ocr;
 
-import edu.sfsu.cs.orange.ocr.BeepManager;
-
-import com.googlecode.tesseract.android.TessBaseAPI;
-
-import edu.sfsu.cs.orange.ocr.camera.CameraManager;
-import edu.sfsu.cs.orange.ocr.camera.ShutterButton;
-import edu.sfsu.cs.orange.ocr.HelpActivity;
-import edu.sfsu.cs.orange.ocr.OcrResult;
-import edu.sfsu.cs.orange.ocr.PreferencesActivity;
-import edu.sfsu.cs.orange.ocr.language.LanguageCodeHelper;
-import edu.sfsu.cs.orange.ocr.language.TranslateAsyncTask;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
@@ -40,9 +34,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.graphics.Rect;
-import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -52,8 +45,8 @@ import android.text.SpannableStringBuilder;
 import android.text.style.CharacterStyle;
 import android.text.style.ForegroundColorSpan;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -64,13 +57,15 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.ContextMenu.ContextMenuInfo;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.File;
-import java.io.IOException;
+import com.googlecode.leptonica.android.ReadFile;
+import com.googlecode.tesseract.android.TessBaseAPI;
+
+import edu.sfsu.cs.orange.ocr.camera.CameraManager;
+import edu.sfsu.cs.orange.ocr.camera.ShutterButton;
+import edu.sfsu.cs.orange.ocr.language.LanguageCodeHelper;
 
 /**
  * This activity opens the camera and does the actual scanning on a background thread. It draws a
@@ -89,12 +84,6 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   /** ISO 639-3 language code indicating the default recognition language. */
   public static final String DEFAULT_SOURCE_LANGUAGE_CODE = "eng";
   
-  /** ISO 639-1 language code indicating the default target language for translation. */
-  public static final String DEFAULT_TARGET_LANGUAGE_CODE = "es";
-  
-  /** The default online machine translation service to use. */
-  public static final String DEFAULT_TRANSLATOR = "Bing Translator";
-  
   /** The default OCR engine to use. */
   public static final String DEFAULT_OCR_ENGINE_MODE = "Tesseract";
   
@@ -112,10 +101,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   
   /** Whether to initially reverse the image returned by the camera. */
   public static final boolean DEFAULT_TOGGLE_REVERSED_IMAGE = false;
-  
-  /** Whether to enable the use of online translation services be default. */
-  public static final boolean DEFAULT_TOGGLE_TRANSLATION = true;
-  
+    
   /** Whether the light should be initially activated by default. */
   public static final boolean DEFAULT_TOGGLE_LIGHT = false;
 
@@ -159,9 +145,9 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   
   // Options menu, for copy to clipboard
   private static final int OPTIONS_COPY_RECOGNIZED_TEXT_ID = Menu.FIRST;
-  private static final int OPTIONS_COPY_TRANSLATED_TEXT_ID = Menu.FIRST + 1;
+  private static final int OPTIONS_COPY_TRANSLATED_TEXT_ID1 = Menu.FIRST + 1;
   private static final int OPTIONS_SHARE_RECOGNIZED_TEXT_ID = Menu.FIRST + 2;
-  private static final int OPTIONS_SHARE_TRANSLATED_TEXT_ID = Menu.FIRST + 3;
+  private static final int OPTIONS_SHARE_TRANSLATED_TEXT_ID1 = Menu.FIRST + 3;
 
   private CameraManager cameraManager;
   private CaptureActivityHandler handler;
@@ -171,27 +157,23 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private TextView statusViewBottom;
   private TextView statusViewTop;
   private TextView ocrResultView;
-  private TextView translationView;
+  
   private View cameraButtonView;
   private View resultView;
   private View progressView;
-  private OcrResult lastResult;
-  private Bitmap lastBitmap;
+  private boolean lastResult;
   private boolean hasSurface;
   private BeepManager beepManager;
   private TessBaseAPI baseApi; // Java interface for the Tesseract OCR engine
   private String sourceLanguageCodeOcr; // ISO 639-3 language code
   private String sourceLanguageReadable; // Language name, for example, "English"
-  private String sourceLanguageCodeTranslation; // ISO 639-1 language code
-  private String targetLanguageCodeTranslation; // ISO 639-1 language code
-  private String targetLanguageReadable; // Language name, for example, "English"
   private int pageSegmentationMode = TessBaseAPI.PageSegMode.PSM_AUTO;
   private int ocrEngineMode = TessBaseAPI.OEM_TESSERACT_ONLY;
   private String characterBlacklist;
   private String characterWhitelist;
   private ShutterButton shutterButton;
 //  private ToggleButton torchButton;
-  private boolean isTranslationActive; // Whether we want to show translations
+  
   private boolean isContinuousModeActive; // Whether we are doing OCR in continuous mode
   private SharedPreferences prefs;
   private OnSharedPreferenceChangeListener listener;
@@ -200,6 +182,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private boolean isEngineReady;
   private boolean isPaused;
   private static boolean isFirstLaunch; // True if this is the first time the app is being run
+  
+  
 
   Handler getHandler() {
     return handler;
@@ -237,7 +221,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     registerForContextMenu(statusViewTop);
     
     handler = null;
-    lastResult = null;
+   // lastResult = null;
     hasSurface = false;
     beepManager = new BeepManager(this);
     
@@ -248,9 +232,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     }
    
     ocrResultView = (TextView) findViewById(R.id.ocr_result_text_view);
-    registerForContextMenu(ocrResultView);
-    translationView = (TextView) findViewById(R.id.translation_text_view);
-    registerForContextMenu(translationView);
+    registerForContextMenu(ocrResultView);    
     
     progressView = (View) findViewById(R.id.indeterminate_progress_indicator_view);
 
@@ -411,7 +393,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     isPaused = true;
     handler.stop();  
     beepManager.playBeepSoundAndVibrate();
-    if (lastResult != null) {
+    if (lastResult){
       handleOcrDecode(lastResult);
     } else {
       Toast toast = Toast.makeText(this, "OCR failed. Please try again.", Toast.LENGTH_SHORT);
@@ -516,7 +498,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       }
 
       // Exit the app if we're not viewing an OCR result.
-      if (lastResult == null) {
+      if (lastResult) {
         setResult(RESULT_CANCELED);
         finish();
         return true;
@@ -584,15 +566,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   /** Sets the necessary language code values for the given OCR language. */
   private boolean setSourceLanguage(String languageCode) {
     sourceLanguageCodeOcr = languageCode;
-    sourceLanguageCodeTranslation = LanguageCodeHelper.mapLanguageCode(languageCode);
     sourceLanguageReadable = LanguageCodeHelper.getOcrLanguageName(this, languageCode);
-    return true;
-  }
-
-  /** Sets the necessary language code values for the translation target language. */
-  private boolean setTargetLanguage(String languageCode) {
-    targetLanguageCodeTranslation = languageCode;
-    targetLanguageReadable = LanguageCodeHelper.getTranslationLanguageName(this, languageCode);
     return true;
   }
 
@@ -722,11 +696,11 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
    * @param ocrResult Object representing successful OCR results
    * @return True if a non-null result was received for OCR
    */
-  boolean handleOcrDecode(OcrResult ocrResult) {
+  boolean handleOcrDecode(boolean ocrResult) {
     lastResult = ocrResult;
     
     // Test whether the result is null
-    if (ocrResult.getText() == null || ocrResult.getText().equals("")) {
+    if (!ocrResult) {
       Toast toast = Toast.makeText(this, "OCR failed. Please try again.", Toast.LENGTH_SHORT);
       toast.setGravity(Gravity.TOP, 0, 0);
       toast.show();
@@ -741,49 +715,24 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     viewfinderView.setVisibility(View.GONE);
     resultView.setVisibility(View.VISIBLE);
 
-    ImageView bitmapImageView = (ImageView) findViewById(R.id.image_view);
+/*    ImageView bitmapImageView = (ImageView) findViewById(R.id.image_view);
     lastBitmap = ocrResult.getBitmap();
     if (lastBitmap == null) {
       bitmapImageView.setImageBitmap(BitmapFactory.decodeResource(getResources(),
           R.drawable.ic_launcher));
     } else {
       bitmapImageView.setImageBitmap(lastBitmap);
-    }
+    }*/
 
     // Display the recognized text
-    TextView sourceLanguageTextView = (TextView) findViewById(R.id.source_language_text_view);
+    /*TextView sourceLanguageTextView = (TextView) findViewById(R.id.source_language_text_view);
     sourceLanguageTextView.setText(sourceLanguageReadable);
     TextView ocrResultTextView = (TextView) findViewById(R.id.ocr_result_text_view);
     ocrResultTextView.setText(ocrResult.getText());
     // Crudely scale betweeen 22 and 32 -- bigger font for shorter text
     int scaledSize = Math.max(22, 32 - ocrResult.getText().length() / 4);
-    ocrResultTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSize);
-
-    TextView translationLanguageLabelTextView = (TextView) findViewById(R.id.translation_language_label_text_view);
-    TextView translationLanguageTextView = (TextView) findViewById(R.id.translation_language_text_view);
-    TextView translationTextView = (TextView) findViewById(R.id.translation_text_view);
-    if (isTranslationActive) {
-      // Handle translation text fields
-      translationLanguageLabelTextView.setVisibility(View.VISIBLE);
-      translationLanguageTextView.setText(targetLanguageReadable);
-      translationLanguageTextView.setTypeface(Typeface.defaultFromStyle(Typeface.NORMAL), Typeface.NORMAL);
-      translationLanguageTextView.setVisibility(View.VISIBLE);
-
-      // Activate/re-activate the indeterminate progress indicator
-      translationTextView.setVisibility(View.GONE);
-      progressView.setVisibility(View.VISIBLE);
-      setProgressBarVisibility(true);
-      
-      // Get the translation asynchronously
-      new TranslateAsyncTask(this, sourceLanguageCodeTranslation, targetLanguageCodeTranslation, 
-          ocrResult.getText()).execute();
-    } else {
-      translationLanguageLabelTextView.setVisibility(View.GONE);
-      translationLanguageTextView.setVisibility(View.GONE);
-      translationTextView.setVisibility(View.GONE);
-      progressView.setVisibility(View.GONE);
-      setProgressBarVisibility(false);
-    }
+    ocrResultTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSize);*/
+   
     return true;
   }
   
@@ -792,10 +741,10 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
    * 
    * @param ocrResult Object representing successful OCR results
    */
-  void handleOcrContinuousDecode(OcrResult ocrResult) {
+  void handleOcrContinuousDecode(boolean ocrResult) {
    
     lastResult = ocrResult;
-    
+    /*
     // Send an OcrResultText object to the ViewfinderView for text rendering
     viewfinderView.addResultText(new OcrResultText(ocrResult.getText(), 
                                                    ocrResult.getWordConfidences(),
@@ -826,7 +775,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       statusViewBottom.setTextSize(14);
       statusViewBottom.setText("OCR: " + sourceLanguageReadable + " - Mean confidence: " + 
           meanConfidence.toString() + " - Time required: " + recognitionTimeRequired + " ms");
-    }
+    }*/
   }
   
   /**
@@ -835,7 +784,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
    * @param obj Metadata for the failed OCR request.
    */
   void handleOcrContinuousDecode(OcrResultFailure obj) {
-    lastResult = null;
+    lastResult = false;
     viewfinderView.removeResultText();
     
     // Reset the text in the recognized text box.
@@ -887,10 +836,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     if (v.equals(ocrResultView)) {
       menu.add(Menu.NONE, OPTIONS_COPY_RECOGNIZED_TEXT_ID, Menu.NONE, "Copy recognized text");
       menu.add(Menu.NONE, OPTIONS_SHARE_RECOGNIZED_TEXT_ID, Menu.NONE, "Share recognized text");
-    } else if (v.equals(translationView)){
-      menu.add(Menu.NONE, OPTIONS_COPY_TRANSLATED_TEXT_ID, Menu.NONE, "Copy translated text");
-      menu.add(Menu.NONE, OPTIONS_SHARE_TRANSLATED_TEXT_ID, Menu.NONE, "Share translated text");
-    }
+    } 
   }
 
   @Override
@@ -911,21 +857,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     	shareRecognizedTextIntent.setType("text/plain");
     	shareRecognizedTextIntent.putExtra(android.content.Intent.EXTRA_TEXT, ocrResultView.getText());
     	startActivity(Intent.createChooser(shareRecognizedTextIntent, "Share via"));
-    	return true;
-    case OPTIONS_COPY_TRANSLATED_TEXT_ID:
-        clipboardManager.setText(translationView.getText());
-      if (clipboardManager.hasText()) {
-        Toast toast = Toast.makeText(this, "Text copied.", Toast.LENGTH_LONG);
-        toast.setGravity(Gravity.BOTTOM, 0, 0);
-        toast.show();
-      }
-      return true;
-    case OPTIONS_SHARE_TRANSLATED_TEXT_ID:
-    	Intent shareTranslatedTextIntent = new Intent(android.content.Intent.ACTION_SEND);
-    	shareTranslatedTextIntent.setType("text/plain");
-    	shareTranslatedTextIntent.putExtra(android.content.Intent.EXTRA_TEXT, translationView.getText());
-    	startActivity(Intent.createChooser(shareTranslatedTextIntent, "Share via"));
-    	return true;
+    	return true;    
     default:
       return super.onContextItemSelected(item);
     }
@@ -952,7 +884,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     if (DISPLAY_SHUTTER_BUTTON) {
       shutterButton.setVisibility(View.VISIBLE);
     }
-    lastResult = null;
+    lastResult = false;
     viewfinderView.removeResultText();
   }
   
@@ -1090,9 +1022,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       // Retrieve from preferences, and set in this Activity, the language preferences
       PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
       setSourceLanguage(prefs.getString(PreferencesActivity.KEY_SOURCE_LANGUAGE_PREFERENCE, CaptureActivity.DEFAULT_SOURCE_LANGUAGE_CODE));
-      setTargetLanguage(prefs.getString(PreferencesActivity.KEY_TARGET_LANGUAGE_PREFERENCE, CaptureActivity.DEFAULT_TARGET_LANGUAGE_CODE));
-      isTranslationActive = prefs.getBoolean(PreferencesActivity.KEY_TOGGLE_TRANSLATION, false);
-      
+     
       // Retrieve from preferences, and set in this Activity, the capture mode preference
       if (prefs.getBoolean(PreferencesActivity.KEY_CONTINUOUS_PREVIEW, CaptureActivity.DEFAULT_TOGGLE_CONTINUOUS)) {
         isContinuousModeActive = true;
@@ -1152,15 +1082,6 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 
     // Recognition language
     prefs.edit().putString(PreferencesActivity.KEY_SOURCE_LANGUAGE_PREFERENCE, CaptureActivity.DEFAULT_SOURCE_LANGUAGE_CODE).commit();
-
-    // Translation
-    prefs.edit().putBoolean(PreferencesActivity.KEY_TOGGLE_TRANSLATION, CaptureActivity.DEFAULT_TOGGLE_TRANSLATION).commit();
-
-    // Translation target language
-    prefs.edit().putString(PreferencesActivity.KEY_TARGET_LANGUAGE_PREFERENCE, CaptureActivity.DEFAULT_TARGET_LANGUAGE_CODE).commit();
-
-    // Translator
-    prefs.edit().putString(PreferencesActivity.KEY_TRANSLATOR, CaptureActivity.DEFAULT_TRANSLATOR).commit();
 
     // OCR Engine
     prefs.edit().putString(PreferencesActivity.KEY_OCR_ENGINE_MODE, CaptureActivity.DEFAULT_OCR_ENGINE_MODE).commit();
@@ -1222,18 +1143,83 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 	    .show();
   }
   
-  @Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		// TODO Auto-generated method stub
-		super.onActivityResult(requestCode, resultCode, data);
-		if (requestCode == 1) {
 
-		     if(resultCode == RESULT_OK){      
-		         int numFrags = data.getIntExtra("NUM_FRAG", 0);          
-		     }
-		     if (resultCode == RESULT_CANCELED) {    
-		         //Write your code if there's no result
-		     }
-		  }
+  @Override
+ 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+ 		// TODO Auto-generated method stub
+ 		super.onActivityResult(requestCode, resultCode, data);
+ 		if (requestCode == 1) {
+
+ 		     if(resultCode == RESULT_OK){      
+ 		         int numFrags = data.getIntExtra("NUM_FRAG", 0);
+ 		        String fragName = data.getStringExtra("FRAG_NAME");
+ 		         Log.d(TAG, "Hi Ray");
+ 		        getLocation(numFrags, fragName);
+ 		     }
+ 		     if (resultCode == RESULT_CANCELED) {    
+ 		         //Write your code if there's no result
+ 		     }
+ 		  }
+ 	}
+
+	private void getLocation(int numFrags, String fragName) {
+		List<String> result = doOCR(numFrags, fragName);
+		String alert = "";
+
+		for (int i = 0; i < result.size(); i++) {
+			alert = alert + result.get(i) + "\n";
+		}
+		  AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this); 
+		  dlgAlert.setTitle("Result");
+		  dlgAlert.setMessage(alert);
+		  dlgAlert.setPositiveButton("OK",new DialogInterface.OnClickListener() {
+		    public void onClick(DialogInterface dialog, int whichButton) {
+		    	try {
+		    		finish();
+				} catch (Throwable e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	        
+		    }
+		  });
+		  dlgAlert.setCancelable(true);
+		  dlgAlert.create().show();
+
+	}
+
+	private List<String> doOCR(int numFrags, String fragName) {
+		String textResult;
+		List<String> result = new ArrayList<String>();
+	
+		for (int i = 1; i <= numFrags; i++) {
+			String fileName = fragName + i + ".jpg";
+			Log.d(TAG, "fileName:" + fileName);
+			BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+			bmOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
+
+			Bitmap bitmap = BitmapFactory.decodeFile(fileName, bmOptions);
+			baseApi.setImage(ReadFile.readBitmap(bitmap));
+			textResult = baseApi.getUTF8Text();
+			Log.d(TAG, "ORG-" + i + ":" + textResult);
+			result.add("ORG-" + i + ":" + textResult);
+			
+			for (int j = 0; j<2;j++) {
+				fileName = fragName + i +"_out_m" + j + ".jpg";
+				Log.d(TAG, "fileName:" + fileName);
+				
+				bitmap = BitmapFactory.decodeFile(fileName, bmOptions);
+				baseApi.setImage(ReadFile.readBitmap(bitmap));
+				textResult = baseApi.getUTF8Text();
+				Log.d(TAG, j + ":" + textResult);
+				result.add("\t" + j + ":" + textResult);
+			}
+		}
+		return result;
+
+	}
+
+	public void setImageView(Drawable bitmap) {
+		// TODO Auto-generated method stub
+		
 	}
 }

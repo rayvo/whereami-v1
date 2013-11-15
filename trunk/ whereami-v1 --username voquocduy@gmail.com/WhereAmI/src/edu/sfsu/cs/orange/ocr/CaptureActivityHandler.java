@@ -16,17 +16,12 @@
  */
 package edu.sfsu.cs.orange.ocr;
 
-import edu.sfsu.cs.orange.ocr.CaptureActivity;
-import edu.sfsu.cs.orange.ocr.R;
-import edu.sfsu.cs.orange.ocr.camera.CameraManager;
-import edu.sfsu.cs.orange.ocr.OcrResult;
-
-import android.content.Intent;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.Gravity;
 import android.widget.Toast;
+import edu.sfsu.cs.orange.ocr.camera.CameraManager;
 
 /**
  * This class handles all the messaging which comprises the state machine for capture.
@@ -102,7 +97,7 @@ final class CaptureActivityHandler extends Handler {
       case R.id.ocr_continuous_decode_succeeded:
         DecodeHandler.resetDecodeState();
         try {
-          activity.handleOcrContinuousDecode((OcrResult) message.obj);
+          //activity.handleOcrContinuousDecode((OcrResult) message.obj);
         } catch (NullPointerException e) {
           // Continue
         }
@@ -113,13 +108,15 @@ final class CaptureActivityHandler extends Handler {
       case R.id.ocr_decode_succeeded:
         state = State.SUCCESS;
         activity.setShutterButtonClickable(false);
+        DecodeHandler.resetDecodeState();
+        
         //activity.handleOcrDecode((OcrResult) message.obj);
-        OcrResult result = (OcrResult) message.obj;
+        /*OcrResult result = (OcrResult) message.obj;
 
 		Intent intent = new Intent(activity.getApplicationContext(),
 				ImageProcessingActivity.class);
 		intent.putExtra("FILE_NAME", result.getText());
-		activity.startActivityForResult(intent, 1);
+		activity.startActivityForResult(intent, 1);*/
         break;
       case R.id.ocr_decode_failed:
         state = State.PREVIEW;
