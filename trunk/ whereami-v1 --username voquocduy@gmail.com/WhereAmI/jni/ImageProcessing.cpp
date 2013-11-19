@@ -120,7 +120,7 @@ jboolean Java_my_project_MyRealTimeImageProcessing_TouchView_brightness(
 	return true;
 }
 
-extern "C" jboolean Java_edu_sfsu_cs_orange_ocr_TouchView_HightLight(
+extern "C" jboolean Java_com_suny_ocr_TouchView_HightLight(
 		JNIEnv * env, jobject obj, jobject bitmap, jint x, jint y,
 		jbyteArray imgData, jintArray outPixels) {
 	__android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "NDK: HightLight");
@@ -218,7 +218,7 @@ void flood_crop(int x,int y)
 	return;
 }
 
-extern "C" jboolean Java_edu_sfsu_cs_orange_ocr_ImageProcessingActivity_extractFrags(
+extern "C" jboolean Java_com_suny_ocr_ImageProcessingActivity_extractFrags(
 		JNIEnv * env, jobject obj, jobject bitmap, jstring _folder, jstring _fileName,
 		jstring _fileNameHL, jintArray xPoints, jintArray yPoints) {
 
@@ -339,7 +339,7 @@ extern "C" jboolean Java_edu_sfsu_cs_orange_ocr_ImageProcessingActivity_extractF
 	(*env).ReleaseStringUTFChars(_fileNameHL, fileNameHL);
 	return true;
 }
-extern "C" jboolean Java_edu_sfsu_cs_orange_ocr_ImageProcessingActivity_saveImage(
+extern "C" jboolean Java_com_suny_ocr_ImageProcessingActivity_saveImage(
 		JNIEnv * env, jobject obj, jobject bitmap, jstring _fileName) {
 
 	const char *fileName = (*env).GetStringUTFChars(_fileName, NULL);
