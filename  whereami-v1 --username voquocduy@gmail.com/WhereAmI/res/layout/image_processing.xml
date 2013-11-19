@@ -4,7 +4,7 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
     
-    <edu.sfsu.cs.orange.ocr.TouchView
+    <com.suny.ocr.TouchView
         android:src="@android:drawable/ic_menu_gallery"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
