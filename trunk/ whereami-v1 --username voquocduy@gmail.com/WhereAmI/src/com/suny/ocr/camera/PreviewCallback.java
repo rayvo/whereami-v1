@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package edu.sfsu.cs.orange.ocr.camera;
+package com.suny.ocr.camera;
 
 import android.graphics.Point;
 import android.hardware.Camera;
