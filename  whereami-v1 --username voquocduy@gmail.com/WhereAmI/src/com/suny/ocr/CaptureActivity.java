@@ -61,6 +61,8 @@ import com.googlecode.tesseract.android.TessBaseAPI;
 import com.suny.ocr.camera.CameraManager;
 import com.suny.ocr.camera.ShutterButton;
 import com.suny.ocr.language.LanguageCodeHelper;
+import com.suny.ocr.network.AndroidRESTClientActivity;
+import com.suny.ocr.network.ServiceProviderActivity;
 
 /**
  * This activity opens the camera and does the actual scanning on a background thread. It draws a
@@ -77,7 +79,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   // Note: These constants will be overridden by any default values defined in preferences.xml.
   
   /** ISO 639-3 language code indicating the default recognition language. */
-  public static final String DEFAULT_SOURCE_LANGUAGE_CODE = "kor";
+  public static final String DEFAULT_SOURCE_LANGUAGE_CODE = "eng";
   
   /** The default OCR engine to use. */
   public static final String DEFAULT_OCR_ENGINE_MODE = "Tesseract";
@@ -1097,48 +1099,79 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 	    .show();
   }
   
-
+  final static int RC_OCR = 1;
+  final static int RC_NETWORK = 2;
+  final static int RC_REST = 3;
+  
   @Override
  	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
- 		// TODO Auto-generated method stub
  		super.onActivityResult(requestCode, resultCode, data);
- 		if (requestCode == 1) {
+ 		int numFrags = 0;
+ 		String fragName = "";
+ 		String lat = "0";
+ 		String lon = "0";
+ 		String query = "";
+ 		
+ 		switch (requestCode) {
+		case RC_OCR:
+			if (resultCode == RESULT_OK) {
+				numFrags = data.getIntExtra("NUM_FRAG", 0);
+				fragName = data.getStringExtra("FRAG_NAME");
+				List<String> result = doOCR(numFrags, fragName);
+				query = createQuery(result);
+				//get Cell-tower location
+				Intent networkIntent = new Intent(this,
+						ServiceProviderActivity.class);
+				startActivityForResult(networkIntent, RC_NETWORK);				
+			} else if (resultCode == RESULT_CANCELED) {
+				Log.e(TAG, "Failed to highlight fragments");
+			} 
+			break;
+		case RC_NETWORK:
+			if (resultCode == RESULT_OK) {
+				lat = data.getStringExtra("LAT");
+				lon = data.getStringExtra("LON");
+				
+				Intent restIntent = new Intent(this,
+						AndroidRESTClientActivity.class);
+				restIntent.putExtra("LAT", lat);
+				restIntent.putExtra("LON", lon);
+				restIntent.putExtra("QUERY", query);
+				startActivityForResult(restIntent, RC_REST);				
+			}
+			if (resultCode == RESULT_CANCELED) {
+				Log.e(TAG, "Failed to get location of Cell-tower");
+			}
+			break;
+			
+		case RC_REST:
+			if (resultCode == RESULT_OK) {
+				//location of the user				
+				lat = data.getStringExtra("LAT");
+				lon = data.getStringExtra("LON");
+				
 
- 		     if(resultCode == RESULT_OK){      
- 		         int numFrags = data.getIntExtra("NUM_FRAG", 0);
- 		        String fragName = data.getStringExtra("FRAG_NAME");
- 		         Log.d(TAG, "Hi Ray");
- 		        getLocation(numFrags, fragName);
- 		     }
- 		     if (resultCode == RESULT_CANCELED) {    
- 		         //Write your code if there's no result
- 		     }
- 		  }
+				Intent resultIntent = new Intent(this, LocationDisplayActivity.class);
+				resultIntent.putExtra("LAT", lat);
+				resultIntent.putExtra("LON", lon);
+				resultIntent.putExtra("QUERY", query);
+				startActivity(resultIntent);
+				finish();
+			}
+			if (resultCode == RESULT_CANCELED) {
+				Log.e(TAG, "Failed to get location of user");
+			}
+			break;
+		}
  	}
 
-	private void getLocation(int numFrags, String fragName) {
-		List<String> result = doOCR(numFrags, fragName);
-		String alert = "";
-
-		for (int i = 0; i < result.size(); i++) {
-			alert = alert + result.get(i) + "\n";
+	
+	private String createQuery(List<String> keywords) {
+		String result = "";
+		for (String keyword : keywords) {
+			result = result + "&" + keyword;
 		}
-		  AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this); 
-		  dlgAlert.setTitle("Result");
-		  dlgAlert.setMessage(alert);
-		  dlgAlert.setPositiveButton("OK",new DialogInterface.OnClickListener() {
-		    public void onClick(DialogInterface dialog, int whichButton) {
-		    	try {
-		    		finish();
-				} catch (Throwable e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}	        
-		    }
-		  });
-		  dlgAlert.setCancelable(true);
-		  dlgAlert.create().show();
-
+		return result;
 	}
 
 	private List<String> doOCR(int numFrags, String fragName) {
@@ -1155,9 +1188,12 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 			baseApi.setImage(ReadFile.readBitmap(bitmap));
 			textResult = baseApi.getUTF8Text();
 			Log.d(TAG, "ORG-" + i + ":" + textResult);
-			result.add("ORG-" + i + ":\t" + textResult);
+			if (textResult != null && textResult.length() > 1) {
+				result.add(textResult);
+			}
 			
-			for (int j = 0; j<2;j++) {
+			 //TODO Later
+			 for (int j = 0; j<2;j++) {
 				fileName = fragName + i +"_out_m" + j + ".jpg";
 				Log.d(TAG, "fileName:" + fileName);
 				
@@ -1165,7 +1201,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 				baseApi.setImage(ReadFile.readBitmap(bitmap));
 				textResult = baseApi.getUTF8Text();
 				Log.d(TAG, j + ":" + textResult);
-				result.add("\t" + j + ":\t" + textResult);
+				result.add(textResult);
 			}
 		}
 		return result;

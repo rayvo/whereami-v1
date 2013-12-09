@@ -58,9 +58,8 @@ public class ImageProcessingActivity extends Activity{
 		setResult(RESULT_OK,returnIntent);     
 		finish();
 	}
-
 	
-	public void doOCR(View view) {
+public void imageProcessing(View view) {
         // call to the native method
 		curBitmap = ((BitmapDrawable) imgView.getDrawable()).getBitmap();
 		String folder = fileNameOrg.substring(0,fileNameOrg.indexOf(".jpg"));
@@ -88,10 +87,13 @@ public class ImageProcessingActivity extends Activity{
 			Intent returnIntent = new Intent();
 			returnIntent.putExtra("NUM_FRAG", size);
 			returnIntent.putExtra("FRAG_NAME", fragName);
-
-			setResult(RESULT_OK, returnIntent);
-			finish();
+			setResult(RESULT_OK, returnIntent);			
+		} else {
+			Intent returnIntent = new Intent();			
+			setResult(RESULT_CANCELED, returnIntent);
+			
 		}
+		finish();
     }
 	
 	//
