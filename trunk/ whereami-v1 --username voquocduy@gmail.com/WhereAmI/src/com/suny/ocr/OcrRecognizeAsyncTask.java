@@ -30,6 +30,7 @@ import android.os.Message;
 import android.util.Log;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
+import com.suny.ocr.network.AndroidRESTClientActivity;
 
 /**
  * Class to send OCR requests to the OCR engine in a separate thread, send a success/failure message,
@@ -57,8 +58,8 @@ final class OcrRecognizeAsyncTask extends AsyncTask<Void, Void, Boolean> {
     this.width = width;
     this.height = height;
   }
-
-  @SuppressLint("SimpleDateFormat")
+  
+ @SuppressLint("SimpleDateFormat")
 	protected void extractFragments() {
 		Bitmap bitmap = activity.getCameraManager()
 				.buildLuminanceSource(data, width, height)
@@ -85,7 +86,7 @@ final class OcrRecognizeAsyncTask extends AsyncTask<Void, Void, Boolean> {
 		Intent intent = new Intent(activity.getApplicationContext(),
 				ImageProcessingActivity.class);
 		intent.putExtra("FILE_NAME", fileName);
-		activity.startActivityForResult(intent, 1);
+		activity.startActivityForResult(intent, CaptureActivity.RC_OCR);
 
 		beProcessing = true;
 		
