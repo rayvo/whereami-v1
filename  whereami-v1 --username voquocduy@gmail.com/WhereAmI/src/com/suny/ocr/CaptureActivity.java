@@ -25,7 +25,6 @@ import java.util.List;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
@@ -315,7 +314,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     resetStatusView();
     
     
-
+    
     
     String previousSourceLanguageCodeOcr = sourceLanguageCodeOcr;
     int previousOcrEngineMode = ocrEngineMode;
@@ -1134,9 +1133,12 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 				
 				Intent restIntent = new Intent(this,
 						AndroidRESTClientActivity.class);
+				/*Intent restIntent = new Intent(this,
+						ImageUpload.class);*/
 				restIntent.putExtra("LAT", lat);
 				restIntent.putExtra("LON", lon);
 				restIntent.putExtra("QUERY", query);
+				//restIntent.putExtra("FILENAMES", fileNames);
 				startActivityForResult(restIntent, RC_REST);				
 			}
 			if (resultCode == RESULT_CANCELED) {
@@ -1145,6 +1147,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 			break;
 			
 		case RC_REST:
+			Log.d(TAG, "Check RayVo");
 			if (resultCode == RESULT_OK) {
 				//location of the user				
 				lat = data.getStringExtra("LAT");
@@ -1161,6 +1164,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 			if (resultCode == RESULT_CANCELED) {
 				Log.e(TAG, "Failed to get location of user");
 			}
+			//finish();
 			break;
 		}
  	}
@@ -1173,13 +1177,16 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 		}
 		return result;
 	}
-
+	
+	String fileNames = "";
+	
 	private List<String> doOCR(int numFrags, String fragName) {
 		String textResult;
 		List<String> result = new ArrayList<String>();
 	
 		for (int i = 1; i <= numFrags; i++) {
 			String fileName = fragName + i + ".jpg";
+			fileNames = fileNames + fileName + "&";
 			Log.d(TAG, "fileName:" + fileName);
 			BitmapFactory.Options bmOptions = new BitmapFactory.Options();
 			bmOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
@@ -1189,7 +1196,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 			textResult = baseApi.getUTF8Text();
 			Log.d(TAG, "ORG-" + i + ":" + textResult);
 			if (textResult != null && textResult.length() > 1) {
-				result.add(textResult);
+				//result.add(textResult);
 			}
 			
 			 //TODO Later
@@ -1201,8 +1208,10 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 				baseApi.setImage(ReadFile.readBitmap(bitmap));
 				textResult = baseApi.getUTF8Text();
 				Log.d(TAG, j + ":" + textResult);
-				result.add(textResult);
+				//result.add(textResult);
 			}
+			 result.add("한국뉴욕주립대");
+			 result.add("포스코");
 		}
 		return result;
 
@@ -1213,3 +1222,4 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 		
 	}
 }
+
