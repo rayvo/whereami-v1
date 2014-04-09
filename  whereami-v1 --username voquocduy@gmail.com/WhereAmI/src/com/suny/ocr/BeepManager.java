@@ -16,8 +16,6 @@
  */
 package com.suny.ocr;
 
-import java.io.IOException;
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -26,6 +24,8 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.preference.PreferenceManager;
 import android.util.Log;
+
+import java.io.IOException;
 
 /**
  * Manages beeps and vibrations for {@link CaptureActivity}.
